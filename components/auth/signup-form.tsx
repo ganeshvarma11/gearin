@@ -14,6 +14,8 @@ import { Select } from "@/components/ui/select";
 
 type AvailabilityState = "idle" | "checking" | "available" | "taken" | "invalid";
 
+const googleAuthEnabled = process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === "true";
+
 export function SignupForm() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -63,6 +65,11 @@ export function SignupForm() {
   }, [deferredUsername]);
 
   async function handleGoogleSignup() {
+    if (!googleAuthEnabled) {
+      setError("Google sign-in is not enabled yet. Create your account with email and password.");
+      return;
+    }
+
     if (!supabase) {
       setError("Add your Supabase environment variables to enable authentication.");
       return;
@@ -139,6 +146,7 @@ export function SignupForm() {
         className="mt-8 w-full justify-center bg-white text-black hover:bg-white/90"
         onClick={() => void handleGoogleSignup()}
         disabled={loading}
+        aria-label="Continue with Google"
       >
         <Chrome className="size-4" />
         Continue with Google
@@ -225,6 +233,7 @@ export function SignupForm() {
         className="mt-6 w-full justify-center"
         disabled={loading || !fullName || !email || !password || availability !== "available"}
         onClick={() => void handleSignup()}
+        aria-label="Create my profile with email and password"
       >
         {loading ? "Creating profile..." : "Create my profile"}
       </Button>

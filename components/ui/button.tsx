@@ -46,7 +46,9 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         type={type}
         className={classes}
         {...props}
-      />
+      >
+        {children}
+      </button>
     );
   }
 );

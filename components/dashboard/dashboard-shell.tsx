@@ -228,6 +228,10 @@ function getConfig(section: Section) {
   return collectionConfigs.find((item) => item.section === section);
 }
 
+function getCollectionLabel(key: CollectionKey) {
+  return collectionConfigs.find((item) => item.key === key)?.title ?? key.replace(/_/g, " ");
+}
+
 export function DashboardShell({ initialProfile }: { initialProfile: Profile }) {
   const supabase = useMemo(() => {
     if (!hasSupabaseEnv()) return null;
@@ -408,6 +412,7 @@ export function DashboardShell({ initialProfile }: { initialProfile: Profile }) 
 
   function syncCollection(key: CollectionKey, items: EditableItem[]) {
     setProfile((current) => ({ ...current, [key]: items }));
+    setSyncMessage(`${getCollectionLabel(key)} saved.`);
 
     if (!supabase || !isLiveProfile) return;
 
@@ -420,7 +425,7 @@ export function DashboardShell({ initialProfile }: { initialProfile: Profile }) 
       }
 
       if (!items.length) {
-        setSyncMessage(`${key.replace("_", " ")} synced.`);
+        setSyncMessage(`${getCollectionLabel(key)} synced.`);
         return;
       }
 
@@ -432,7 +437,7 @@ export function DashboardShell({ initialProfile }: { initialProfile: Profile }) 
       }));
 
       const { error: insertError } = await supabase.from(key).insert(rows);
-      setSyncMessage(insertError ? insertError.message : `${key.replace("_", " ")} synced.`);
+      setSyncMessage(insertError ? insertError.message : `${getCollectionLabel(key)} synced.`);
     })();
   }
 
@@ -494,6 +499,12 @@ export function DashboardShell({ initialProfile }: { initialProfile: Profile }) 
                   </Button>
                 </div>
               </div>
+
+              <QuickAddComposer
+                configs={collectionConfigs}
+                getItems={(key) => (profile[key] as EditableItem[] | undefined) ?? []}
+                onSave={(key, items) => syncCollection(key, items)}
+              />
 
               <Card className="p-6">
                 <div className="flex items-center justify-between gap-3">
@@ -793,6 +804,123 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
+function QuickAddComposer({
+  configs,
+  getItems,
+  onSave
+}: {
+  configs: CollectionConfig[];
+  getItems: (key: CollectionKey) => EditableItem[];
+  onSave: (key: CollectionKey, items: EditableItem[]) => void;
+}) {
+  const [selectedKey, setSelectedKey] = useState<CollectionKey>("latest_links");
+  const [formValues, setFormValues] = useState<FormValue>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const selectedConfig = configs.find((config) => config.key === selectedKey) ?? configs[0];
+
+  function handleSelect(key: CollectionKey) {
+    setSelectedKey(key);
+    setFormValues({});
+    setErrors({});
+  }
+
+  function updateField(name: string, value: string) {
+    const nextValues = { ...formValues, [name]: value };
+    setFormValues(nextValues);
+    setErrors(validateFields(nextValues, selectedConfig.fields));
+  }
+
+  async function submit() {
+    const nextErrors = validateFields(formValues, selectedConfig.fields);
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length) return;
+
+    setSaving(true);
+    await new Promise((resolve) => window.setTimeout(resolve, 350));
+
+    const items = getItems(selectedConfig.key);
+    const payload = {
+      id: generateId(),
+      sort_order: items.length,
+      ...formValues
+    } as EditableItem;
+
+    onSave(
+      selectedConfig.key,
+      [...items, payload].map((item, index) => ({ ...item, sort_order: index }))
+    );
+
+    setFormValues({});
+    setErrors({});
+    setSaving(false);
+  }
+
+  return (
+    <Card className="p-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <h2 className="font-heading text-2xl font-bold tracking-[-0.02em] text-foreground">
+            Quick add
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+            Keep fresh drops, accounts, partners, ventures, and gear moving from one place.
+          </p>
+        </div>
+        <div className="w-full lg:w-56">
+          <Field label="Tag">
+            <Select
+              value={selectedKey}
+              onChange={(event) => handleSelect(event.target.value as CollectionKey)}
+            >
+              {configs.map((config) => (
+                <option key={config.key} value={config.key}>
+                  {config.title}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+      </div>
+
+      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        {selectedConfig.fields.map((field) => (
+          <div key={field.name} className={field.type === "textarea" ? "sm:col-span-2" : undefined}>
+            <Field label={field.label}>
+              <div>
+                {field.type === "textarea" ? (
+                  <Textarea
+                    value={formValues[field.name] ?? ""}
+                    placeholder={field.placeholder}
+                    onChange={(event) => updateField(field.name, event.target.value)}
+                  />
+                ) : (
+                  <Input
+                    type={field.type === "url" ? "url" : "text"}
+                    value={formValues[field.name] ?? ""}
+                    placeholder={field.placeholder}
+                    onChange={(event) => updateField(field.name, event.target.value)}
+                  />
+                )}
+                {errors[field.name] ? (
+                  <p className="mt-2 text-xs text-red-400">{errors[field.name]}</p>
+                ) : null}
+              </div>
+            </Field>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-6 flex justify-end">
+        <Button onClick={() => void submit()} disabled={saving}>
+          {saving ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
+          {saving ? "Posting..." : `Post to ${selectedConfig.title}`}
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
 function CollectionEditor({
   config,
   items,
@@ -902,10 +1030,10 @@ function CollectionEditor({
                 <div>{config.renderPreview(item)}</div>
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" onClick={() => openForEdit(item)}>
+                <Button variant="ghost" size="icon" onClick={() => openForEdit(item)} aria-label="Edit item">
                   <Pencil className="size-4" />
                 </Button>
-                <Button variant="ghost" size="icon" onClick={() => remove(item.id)}>
+                <Button variant="ghost" size="icon" onClick={() => remove(item.id)} aria-label="Delete item">
                   <Trash2 className="size-4" />
                 </Button>
               </div>

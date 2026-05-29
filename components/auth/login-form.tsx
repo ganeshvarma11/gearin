@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
+const googleAuthEnabled = process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === "true";
+
 export function LoginForm() {
   const supabase = useMemo(() => {
     if (!hasSupabaseEnv()) return null;
@@ -20,6 +22,11 @@ export function LoginForm() {
   const [error, setError] = useState("");
 
   async function handleGoogleLogin() {
+    if (!googleAuthEnabled) {
+      setError("Google sign-in is not enabled yet. Use email and password to sign in.");
+      return;
+    }
+
     if (!supabase) {
       setError("Add your Supabase environment variables to enable authentication.");
       return;
@@ -81,6 +88,7 @@ export function LoginForm() {
         className="mt-8 w-full justify-center bg-white text-black hover:bg-white/90"
         onClick={() => void handleGoogleLogin()}
         disabled={loading}
+        aria-label="Sign in with Google"
       >
         <Chrome className="size-4" />
         Sign in with Google
@@ -119,6 +127,7 @@ export function LoginForm() {
         className="mt-6 w-full justify-center"
         onClick={() => void handleEmailLogin()}
         disabled={loading || !email || !password}
+        aria-label="Sign in with email and password"
       >
         <KeyRound className="size-4" />
         {loading ? "Signing in..." : "Sign in"}

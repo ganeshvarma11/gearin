@@ -29,7 +29,10 @@ Fill in:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=your-project-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+NEXT_PUBLIC_GOOGLE_AUTH_ENABLED=false
 ```
+
+Set `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED=true` only after Google is enabled under Authentication > Providers in Supabase.
 
 If these values are missing, Gearin still runs in demo mode using local sample data, but authentication and live profile editing stay disabled.
 
