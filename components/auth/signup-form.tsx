@@ -143,7 +143,7 @@ export function SignupForm() {
 
       <Button
         variant="secondary"
-        className="mt-8 w-full justify-center border-white bg-white text-[#111827] shadow-soft hover:bg-zinc-100 disabled:opacity-90"
+        className="mt-8 w-full justify-center border-white bg-white !text-zinc-950 shadow-soft hover:bg-zinc-100 disabled:opacity-90"
         onClick={() => void handleGoogleSignup()}
         disabled={loading}
         aria-label="Continue with Google"

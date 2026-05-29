@@ -85,7 +85,7 @@ export function LoginForm() {
 
       <Button
         variant="secondary"
-        className="mt-8 w-full justify-center border-white bg-white text-[#111827] shadow-soft hover:bg-zinc-100 disabled:opacity-90"
+        className="mt-8 w-full justify-center border-white bg-white !text-zinc-950 shadow-soft hover:bg-zinc-100 disabled:opacity-90"
         onClick={() => void handleGoogleLogin()}
         disabled={loading}
         aria-label="Sign in with Google"
